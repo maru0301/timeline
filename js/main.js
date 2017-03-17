@@ -19,6 +19,11 @@ var VER_MASTERY = "";
 var CDN_URL = "";
 */
 
+var CDN_URL = "";
+
+var JSON_DATA_TIMELINE = {};
+var JSON_DATA_CHAMP_IMG = new Array();
+
 ////////////////////////////////////////////////////////////////////////////////////
 // Error Message
 var ERROR_ID_VERSION_GET_ERROR 			= "サーバーバージョン情報が取得出来ませんでした";
@@ -107,7 +112,7 @@ function main()
 		}
 
 		var matchDetailJson = json[0];
-		var matchTimelneJson = json[1];
+		JSON_DATA_TIMELINE = json[1];
 		var versionJson = json[2];
 
 		var matchDetailData = { game:{}, teams:[] };
@@ -118,9 +123,13 @@ function main()
 		console.log(json);
 		console.log("------- matchDetailData -------");
 		console.log(matchDetailData);
+		console.log("------- matchTimelineJson -------");
+		console.log(JSON_DATA_TIMELINE);
+		console.log("------- versionJson -------");
+		console.log(versionJson);
 
 		var version = GetVersion(matchDetailData.game.gameVer, versionJson);
-		TimeLineMain(version, matchDetailData);
+		InitTimeLine(version, matchDetailData, JSON_DATA_TIMELINE);
 
 	});
 
@@ -137,162 +146,9 @@ function main()
 			}
 		}
 	});
-/*
-	$.ajax(
-	{
-		url: './php/main.php',
-		type: 'GET',
-		dataType: 'json',
-		scriptCharset: 'utf-8',
-		data: { func:"GetMatchDetails", realm:gameRealm, id:gameId, hash:gameHash },
-		
-		success: function (data)
-		{
-			console.log("GetURL : Success");
-			console.log(data);
-
-			MATCH_HISTORY_JSON.game = {};
-
-			MATCH_HISTORY_JSON.game = GetMatchData(data);
-			MATCH_HISTORY_JSON.teams = [];
-			MATCH_HISTORY_JSON.teams = GetTeamData(data);
-
-			console.log(MATCH_HISTORY_JSON);
-			
-			var version = MATCH_HISTORY_JSON.game.gameVer;
-			var index = version.search("[\.]");
-			var gameVersion = version.substr(0,index+1);
-			version = version.substr(index+1);
-			index = version.search("[\.]");
-			gameVersion = gameVersion + version.substr(0,index+2);
-
-			var request = [
-				{ error_id: ERROR_ID_VERSION_GET_ERROR,			url: './php/main.php', data: { func:"GetVersion" },  },
-				{ error_id: ERROR_ID_CHAMPION_IMG_GET_ERROR,	url: './php/main.php', data: { func:"GetChampionImage", ver:gameVersion },  },
-//				{ error_id: ERROR_ID_SUMMONER_SPELL_GET_ERROR,	url: './php/main.php', data: { func:"GetSummonerSpells", ver:gameVersion },  },
-//				{ error_id: ERROR_ID_ITEM_IMG_GET_ERROR,		url: './php/main.php', data: { func:"GetItem", ver:gameVersion },  },
-//				{ error_id: ERROR_ID_MASTERY_IMG_GET_ERROR,		url: './php/main.php', data: { func:"GetMasteryImage", ver:gameVersion },  },
-			//	{ error_id: ERROR_ID_TEAM_GET_ERROR,			url: './json/team.json', data: {},  },
-			//	{ error_id: ERROR_ID_MATCH_DETAILS_GET_ERROR,	url: './php/main.php', data: { func:"GetMatchDetails", realm:gameRealm, id:gameId, hash:gameHash },  },
-			];
-
-			var jqXHRList = [];
-
-			for( var i = 0, max = request.length ; i < max ; ++i )
-			{
-				jqXHRList.push($.ajax(
-				{
-					url: request[i].url,
-					type: 'GET',
-					dataType: 'json',
-					data: request[i].data,
-				}));
-			}
-
-			$.when.apply(null, jqXHRList).done(function ()
-			{
-				var json = [];
-				var statuses = [];
-				var jqXHRResultList = [];
-				
-				for( var i = 0, max = arguments.length ; i < max ; ++i )
-				{
-					var result = arguments[i];
-					json.push(result[0]);
-					statuses.push(result[1]);
-					jqXHRResultList.push(result[3]);
-				}
-				
-				///////////////////////////////////////////////////////////
-				// Global情報取得
-				///////////////////////////////////////////////////////////
-				var verJson = json[0];
-				var champImgJson = json[1];
-				var spellJson = json[2];
-				var itemImgJson = json[3];
-				var masteryImgJson = json[4];
-			//	JSON_DATA_TEAM = json[4];
-//				var matchdetailJson = json[5];
-				
-				// ソート
-				for(var key in champImgJson.data)
-					JSON_DATA_CHAMP_IMG.push(champImgJson.data[key]);
-				
-				JSON_DATA_CHAMP_IMG.sort(function(a, b)
-					{
-						if(a.key < b.key) return -1;
-						if(a.key > b.key) return 1;
-						if(a.key == b.key) return 0;
-					}
-				);
-				
-				for(var key in itemImgJson.data)
-					JSON_DATA_ITEM[key] = itemImgJson.data[key];
-				
-				for(var key in spellJson.data)
-				{
-					var id = spellJson.data[key].id;
-					JSON_DATA_SUMMONER_SPELL[id] = spellJson.data[key];
-				}
-
-				JSON_DATA_SUMMONER_SPELL.sort(function(a, b)
-					{
-						if(a.name < b.name) return -1;
-						if(a.name > b.name) return 1;
-						if(a.name == b.name) return 0;
-					}
-				);
-				
-				for(var key in masteryImgJson.data)
-				{
-					JSON_DATA_MASTERY_IMG[key] = masteryImgJson.data[key];
-				}
-				JSON_DATA_MASTERY_IMG.tree = masteryImgJson.tree;
-				
-				JSON_DATA_MASTERY_IMG.sort(function(a, b)
-					{
-						if(a.name < b.name) return -1;
-						if(a.name > b.name) return 1;
-						if(a.name == b.name) return 0;
-					}
-				);
-				
-				// Version
-				VER_CHAMPION = verJson.n.champion;
-				VER_SN_SPELLS = verJson.n.summoner;
-				VER_ITEM = verJson.n.item;
-				VER_MASTERY = verJson.n.mastery;
-
-				CDN_URL = verJson.cdn;
-
-				ReworkJson();
-			});
-
-			$.when.apply(null, jqXHRList).fail(function ()
-			{
-				for( var i = 0 ; i < jqXHRList.length ; ++i )
-				{
-					if( jqXHRList[i].statusText === "error" )
-					{
-						errorDlg(request[i].error_id);
-					}
-				}
-			});
-		},
-
-		error: function (XMLHttpRequest, textStatus, errorThrown)
-		{
-			console.log("GetURL : Fail");
-			console.log(XMLHttpRequest.responseText);
-			console.log(textStatus);
-			console.log(errorThrown);
-			errorDlg(ERROR_ID_MATCH_DETAILS_GET_ERROR);
-		}
-	});
-*/
 }
 
-function TimeLineMain(version, matchDetailData)
+function InitTimeLine(version, matchDetailData, matchTimelineJson)
 {
 	var request = [
 		{ error_id: ERROR_ID_REALM_GET_ERROR,			url: './php/main.php', data: { func:"GetRealm" },  },
@@ -319,7 +175,7 @@ function TimeLineMain(version, matchDetailData)
 
 	$.when.apply(null, jqXHRList).done(function ()
 	{
-		console.log("Success : TimeLine");
+		console.log("Success : InitTimeLine");
 
 		var json = [];
 		var statuses = [];
@@ -341,8 +197,6 @@ function TimeLineMain(version, matchDetailData)
 		var spellJson = json[2];
 		var itemImgJson = json[3];
 		var masteryImgJson = json[4];
-	//	JSON_DATA_TEAM = json[4];
-//				var matchdetailJson = json[5];
 
 		var championImgData = new Array();
 		var spellImgData = new Array();
@@ -351,7 +205,7 @@ function TimeLineMain(version, matchDetailData)
 
 		// ソート
 		for(var key in champImgJson.data)
-			championImgData.push(champImgJson.data[key]);
+			JSON_DATA_CHAMP_IMG.push(champImgJson.data[key]);
 		
 		championImgData.sort(function(a, b)
 			{
@@ -392,21 +246,12 @@ function TimeLineMain(version, matchDetailData)
 				if(a.name == b.name) return 0;
 			}
 		);
-		
-		// Version
-		/*
-		VER_CHAMPION = verJson.n.champion;
-		VER_SN_SPELLS = verJson.n.summoner;
-		VER_ITEM = verJson.n.item;
-		VER_MASTERY = verJson.n.mastery;
 
-		CDN_URL = verJson.cdn;
-		*/
-		var cdn_url = realmJson.cdn;
+		CDN_URL = realmJson.cdn;
 
 //		ReworkJson();
 		console.log("------- championImgData -------");
-		console.log(championImgData);
+		console.log(JSON_DATA_CHAMP_IMG);
 		console.log("------- spellImgData -------");
 		console.log(spellImgData);
 		console.log("------- itemImgImgData -------");
@@ -414,11 +259,15 @@ function TimeLineMain(version, matchDetailData)
 		console.log("------- masteryImgData -------");
 		console.log(masteryImgData);
 
-		ShowTimeLineCanvas(cdn_url, version);
+		InitTimeLineCanvas(version, matchDetailData);
+//		UpdateFrame(0);
 	});
 
 	$.when.apply(null, jqXHRList).fail(function ()
 	{
+		console.log("Fail : InitTimeLine");
+		console.log(jqXHRList);
+
 		for( var i = 0 ; i < jqXHRList.length ; ++i )
 		{
 			if( jqXHRList[i].statusText === "error" )
@@ -703,36 +552,40 @@ function ShowMasteryIcon(data, key, getName, createName)
 	target.appendChild(newTag);
 }
 
-function ShowTimeLineCanvas(cdn_url, version)
+var imgData = new Array();
+function InitTimeLineCanvas(version, matchDetailData)
 {
+	/*
 	var target = document.getElementById("timeline_canvas");
 	var ctx = target.getContext('2d');
-	var champ_img = "Aatrox.png";
+	var champ_img = [
+		"Aatrox.png",
+		"Warwick.png",
+		"Ahri.png",
+		"Caitlyn.png",
+		"Nami.png",
+		"Irelia.png",
+		"Elise.png",
+		"Orianna.png",
+		"Tristana.png",
+		"Lulu.png",
+	];
 
-	var imgData = new Array();
+//	var imgData = new Array();
 	imgData.push( {src:"./img/minimap.png", img:new Image() });
 
-	for( var i = 0 ; i < 1 ; ++i )
+	for( var i = 0 ; i < 0 ; ++i )
 	{
 		imgData.push(
 			{
-				src:cdn_url + "/" + version + "/img/champion/" + champ_img,
+				src:cdn_url + "/" + version + "/img/champion/" + champ_img[i],
 				img:new Image(),
 				reSize:[64,64],
 		});
 	}
 
-	var srcImg = [
-		"./img/minimap.png",
-		cdn_url + "/" + version + "/img/champion/" + champ_img,
-		cdn_url + "/" + version + "/img/champion/" + champ_img,
-	];
-
-	var img = [];
 	for(var i = 0 ; i < imgData.length ; ++i)
 	{
-//		img[i] = new Image();
-//		img[i].src = srcImg[i];
 		imgData[i].img.src = imgData[i].src;
 	}
 
@@ -752,103 +605,93 @@ function ShowTimeLineCanvas(cdn_url, version)
 						target.width = imgData[j].img.width;
 						target.height = imgData[j].img.height;
 					}
+
 					if(imgData[j].reSize == undefined)
 						ctx.drawImage(imgData[j].img, x, y);
 					else
-						ctx.drawImage(imgData[j].img, 0, 0, imgData[j].img.width, imgData[j].img.height, 0, 100, 64, 64);					
-//						ctx.drawImage(imgData[j].img, x, y, imgData[j].img.width, imgData[j].img.height, 0, 0, imgData[j].reSize[0], imgData[j].reSize[1]);
+						ctx.drawImage(imgData[j].img, 0, 0, imgData[j].img.width, imgData[j].img.height, x, y, imgData[j].reSize[0], imgData[j].reSize[1]);
 					
-//					x += 50;
-					y -= 100;
-				}
-			}
-			loadedCount++;
-		}, false);
-	}
-	/*
-	for(var i = 0 ; i < srcImg.length ; ++i)
-	{
-		img[i].addEventListener('load', function()
-		{
-			if (loadedCount == img.length)
-			{
-				var x = 0;
-				var y = 0;
-				for (var j in img)
-				{
-					if( j == 0 )
-					{
-						target.width = img[j].width;
-						target.height = img[j].height;
-					}
-					ctx.drawImage(img[j], x, y);
-					x += 50;
-					y += 70;
+					x = 150 + (250 * Math.floor(j/5));
+					y = (70 * (j%5));
+					InitTimeLineCanvas2();
 				}
 			}
 			loadedCount++;
 		}, false);
 	}
 	*/
+//	ShowMapCanvas();
+	var team = [ "blue", "red" ];
 
-	/*
-	var img = new Image();
-	img.src = "./img/minimap.png";
-
-	var champ_img = "Aatrox.png"
-
-	img.src = cdn_url + "/" + version + "/img/champion/" + champ_img;
-//	img.src = "./img/minimap.png";
-	img.addEventListener('load', function() {
-		ctx.clearRect(0,0, img.width, img.height);
-		ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, 64, 64 );
-}, false);
-
-	img.addEventListener('load', function() {
-		target.width = img.width;
-		target.height = img.height;
-		ctx.clearRect(0,0, img.width, img.height);
-		ctx.drawImage(img, 0, 0);
-	}, false);
-	*/
+	for( var j = 0 ; j < matchDetailData.teams[0].player.length ; ++j )
+		InitChampionCanvas(version, team[0] + j + "_canvas", j+1, GetChampionImgName(matchDetailData.teams[0].player[j].championId));
 }
 
-function ShowChampionCanvas(cdn_url, version)
+function ShowMapCanvas()
 {
-	/*
 	var target = document.getElementById("canvas");
 	var newTag;
 
-		newTag = document.createElement("canvas");
-		newTag.id = "blue_1_champion_canvas";
-		newTag.width = 64;
-		newTag.height = 64;
-
-		target.appendChild(newTag);
-		
-		var ctx = newTag.getContext('2d');
-		var img = new Image();
-		var champ_img = "Aatrox.png"
-
-		img.src = cdn_url + "/" + version + "/img/champion/" + champ_img;
-		img.addEventListener('load', function() {
-			ctx.clearRect(0,0, img.width, img.height);
-			ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, 64, 64 );
-	}, false);
-	*/
+	newTag = document.createElement("canvas");
+	newTag.id = "map_canvas";
+	newTag.style = "position: absolute; z-index: 0";
 	
-	var target = document.getElementById("canvas_map");
+	target.appendChild(newTag);
 
-	var ctx = target.getContext('2d');
-	var img = new Image();
-	var champ_img = "Aatrox.png"
+	var ctx = newTag.getContext('2d');
 
-	img.src = cdn_url + "/" + version + "/img/champion/" + champ_img;
-//	img.src = "./img/minimap.png";
-	img.addEventListener('load', function() {
-		ctx.clearRect(0,0, img.width, img.height);
-		ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, 64, 64 );
-}, false);
+	img = new Image();
+	img.src = "./img/minimap.png";
+
+	img.addEventListener('load', function()
+	{
+		newTag.width = this.width;
+		newTag.height = this.height;
+		ctx.drawImage(this, 0, 0);		
+	}, false);
+}
+
+function InitChampionCanvas(version, id_name, z_index, champ_name)
+{
+	var target = document.getElementById("canvas");
+	var newTag;
+
+	newTag = document.createElement("canvas");
+	newTag.id =  id_name;
+	newTag.style = "position: absolute; z-index:" + z_index;
+
+	target.appendChild(newTag);
+
+	var ctx = newTag.getContext('2d');
+
+	img = new Image();
+	img.src = CDN_URL + "/" + version + "/img/champion/" + champ_name,
+	img.addEventListener('load', function()
+	{
+		var quality = 0.3;
+		newTag.width = this.width * quality;
+		newTag.height = this.height * quality;
+		ctx.drawImage(this, 0, 0, this.width, this.height, 0, 0 , this.width * quality, this.height * quality);
+		/*
+		newTag.width = this.width;
+		newTag.height = this.height;
+
+		ctx.drawImage(this, 0, 0, newTag.width, newTag.height);
+		var quality = 0.3;
+		newTag2 = document.createElement("canvas");
+		var ctx2 = newTag2.getContext('2d');
+		newTag2.id =  id_name + "2";
+		newTag2.style = "position: absolute; z-index: "+ z_index;
+		newTag2.width = this.width * quality;
+		newTag2.height = this.height * quality;
+		ctx2.drawImage(newTag, 0, 0, this.width * quality, this.height * quality);
+		ctx.drawImage(this, 0, 0, newTag.width, newTag.height, 34, 0 , this.width * quality, this.height * quality);
+		// -- back from reduced draw ---
+//		ctx.drawImage(newTag2, 0, 0, this.width, this.height);
+		target.appendChild(newTag2);
+//		target.removeChild(newTag);
+	*/
+	}, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -892,6 +735,31 @@ function GetVersion(ver, json)
 			return json[num];
 		}
 	}
+
+	num = json.length;
+	var str_num = ver.length;
+
+	while(str_num)
+	{
+		while(--num)
+		{
+			if(json[num].match(ver))
+				return json[num];
+		}
+		num = json.length;
+		str_num--;
+		ver = ver.substr(0, str_num);
+	}
+}
+
+function GetChampionImgName(id)
+{
+	for( var i = 0 ; i < JSON_DATA_CHAMP_IMG.length ; ++i )
+	{
+		if ( id == JSON_DATA_CHAMP_IMG[i].id )
+			return JSON_DATA_CHAMP_IMG[i].image.full;
+	}
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
@@ -1068,6 +936,128 @@ function GetPlayerData(data, teamId)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////
+
+function UpdateFrame(frame)
+{
+	console.log("UpdateFrame");
+	console.log(JSON_DATA_TIMELINE.frames.length)
+	UpdateChampionCanvas(frame , JSON_DATA_TIMELINE);
+}
+
+function UpdateChampionCanvas(frame, matchTimelineJson)
+{
+	var target = document.getElementById("timeline_canvas");
+	var ctx = target.getContext('2d');
+	console.log(ctx);
+
+	ctx.drawImage(imgData[1].img, 0, 0, imgData[1].img.width, imgData[1].img.height, 0, 0, imgData[1].reSize[0], imgData[1].reSize[1]);
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////
 
-main();
+//main();
+
+class Hoge
+{
+	constructor()
+	{
+		var data = location.href.split("?")[1];
+		var text = data.split("=")[1];
+		var url = decodeURIComponent(text);
+
+		var index = url.search("#");
+		url = url.substr(index);
+		index = url.search("/");
+		url = url.substr(index+1);
+		index = url.search("/");
+
+		var gameRealm = url.substr(0, index);
+
+		url = url.substr(index+1);
+		index = url.search('[\?]');
+
+		var gameId = url.substr(0, index);
+
+		url = url.substr(index+1);
+		index = url.search('=');
+		url = url.substr(index+1);
+		index = url.search('&');
+
+		if( index != -1 )
+			url = url.substr(0, index);
+
+		var gameHash = url;
+
+		var request = [
+			{ error_id: ERROR_ID_MATCH_DETAILS_GET_ERROR,	url: './php/main.php', data: { func:"GetMatchDetails", realm:gameRealm, id:gameId, hash:gameHash },  },
+			{ error_id: ERROR_ID_MATCH_TIMELINE_GET_ERROR,	url: './php/main.php', data: { func:"GetMatchTimeline", realm:gameRealm, id:gameId, hash:gameHash },  },
+			{ error_id: ERROR_ID_VERSION_GET_ERROR,			url: './php/main.php', data: { func:"GetVersion" },  },
+		];
+
+		var jqXHRList = [];
+
+		for( var i = 0, max = request.length ; i < max ; ++i )
+		{
+			jqXHRList.push($.ajax(
+			{
+				url: request[i].url,
+				type: 'GET',
+				dataType: 'json',
+				data: request[i].data,
+			}));
+		}
+
+		$.when.apply(null, jqXHRList).done(function ()
+		{
+			console.log("Success : Main");
+
+			var json = [];
+			var statuses = [];
+			var jqXHRResultList = [];
+			
+			for( var i = 0, max = arguments.length ; i < max ; ++i )
+			{
+				var result = arguments[i];
+				json.push(result[0]);
+				statuses.push(result[1]);
+				jqXHRResultList.push(result[3]);
+			}
+
+			var matchDetailJson = json[0];
+			this.JSON_DATA_TIMELINE = json[1];
+			var versionJson = json[2];
+
+			var matchDetailData = { game:{}, teams:[] };
+			matchDetailData.game = GetMatchData(matchDetailJson);
+			matchDetailData.teams = GetTeamData(matchDetailJson);
+
+			console.log("------- json -------");
+			console.log(json);
+			console.log("------- matchDetailData -------");
+			console.log(matchDetailData);
+			console.log("------- matchTimelineJson -------");
+			console.log(JSON_DATA_TIMELINE);
+			console.log("------- versionJson -------");
+			console.log(versionJson);
+
+			var version = this.GetVersion(matchDetailData.game.gameVer, versionJson);
+			this.InitTimeLine(version, matchDetailData, JSON_DATA_TIMELINE);
+		});
+
+		$.when.apply(null, jqXHRList).fail(function ()
+		{
+			console.log("Fail : Main");
+			console.log(jqXHRList);
+
+			for( var i = 0 ; i < jqXHRList.length ; ++i )
+			{
+				if( jqXHRList[i].statusText === "error" )
+				{
+					errorDlg(request[i].error_id);
+				}
+			}
+		});
+	}
+}
