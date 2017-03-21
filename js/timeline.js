@@ -307,7 +307,7 @@ class TimeLine {
 			var quality = 0.3;
 			newTag.width = self.CANVAS_MAP_IMG.width;
 			newTag.height = self.CANVAS_MAP_IMG.height;
-			ctx.drawImage(this, 0, 0, this.width, this.height, 0, 0 , this.width * quality, this.height * quality);
+//			ctx.drawImage(this, 0, 0, this.width, this.height, 0, 0 , this.width * quality, this.height * quality);
 		}, false);
 	}
 
@@ -474,7 +474,7 @@ class TimeLine {
 		{
 			newTag.width = this.width;
 			newTag.height = this.height;
-			ctx.drawImage(this, 0, 0);		
+//			ctx.drawImage(this, 0, 0);
 		}, false);
 	}
 
@@ -485,7 +485,7 @@ class TimeLine {
 		console.log(ctx);
 //		ctx.translate(100,0);
 		ctx.clearRect(0, 0, target.width, target.height);
-		ctx.drawImage(this.CANVAS_CHAMPION_IMG[0], 0, 0, this.CANVAS_CHAMPION_IMG[0].width, this.CANVAS_CHAMPION_IMG[0].height, 100, 0, 12, 12);
+//		ctx.drawImage(this.CANVAS_CHAMPION_IMG[0], 0, 0, this.CANVAS_CHAMPION_IMG[0].width, this.CANVAS_CHAMPION_IMG[0].height, 100, 0, 12, 12);
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////
@@ -510,4 +510,229 @@ console.log("version : " + t.VERSION);
 function Test()
 {
 	t.UpdateFrame(0);
+}
+
+function formatTime (ms)
+{
+	let min = (ms / 1000 / 60) << 0
+	let sec = (ms / 1000) % 60 << 0
+	
+	return min + ':' + (sec < 10 ? '0' : '') + sec
+}
+
+//const log = bunyan.createLogger({ name: 'data-grabber' });
+let games = {}
+//let gcs = gcloud.storage();
+//let matchesBucket = gcs.bucket(process.env.LOL_TIMELINE_GCLOUD_BUCKET)
+
+function connectToSocket ()
+{
+	console.log('connecting to websocket...');
+
+	$.ajax(
+	{
+		url: 'http://api.lolesports.com/api/issueToken',
+		type: 'GET',
+		dataType: 'json',
+		data: {},
+		
+		success: function (json)
+		{
+			let ws = new WebSocket(`ws://livestats.proxy.lolesports.com/stats?jwt=${json.token}`);
+			//let ws = new WebSocket(`ws://localhost/wikis/timeline/index.html:8080`) // used for simulation of livestats server
+			console.log(ws);
+
+			ws.onclose = function(env) {
+				console.log('websocket has closed. info:');
+//				console.log(`  code: ${code}`);
+//				console.log(`  message: ${message}`);
+				console.log('reconnecting...');
+				connectToSocket();
+			};
+
+			ws.onerror = function(env) {
+				console.log('error reported:');
+				console.log(env);
+			};
+
+			var json = [];
+			ws.onmessage = function(env) {
+				if(env && env.data )
+				{
+					json = JSON.parse(env.data);
+					console.log(json);
+				}
+
+				Object.keys(json).forEach((key) => {
+					let game = json[key]
+					if (game === null) return
+
+					if (!games[key])
+					{
+						console.log(`adding game ${game.realm}-${key}`);
+						
+						$.ajax(
+						{
+							var myObject = new FileReader();
+	//						myObject = WScript.CreateObject("Scripting.FileSystemObject");
+							
+							let filePath = `./games/${game.realm}-${key}.json`;
+							let fileExisted = myObject.readAsText("AAA.txt", "utf-8");
+							games[key] = {
+								stream: fs.createWriteStream(filePath, { flags: 'a' }),
+								obj: game,
+								id: `${game.realm}-${key}`,
+								written: myObject.fileExists(filePath + '.finished')
+							}
+
+							if (!fileExisted)
+							{
+								games[key].stream.write(`[\n`)
+							}
+						}
+					}
+
+				});
+			};
+		},
+		error: function (XMLHttpRequest, textStatus, errorThrown)
+		{
+			console.log(XMLHttpRequest);
+		}
+	});
+
+	return;
+
+	var request = new XMLHttpRequest();
+	request.responseType = 'json';
+
+	request.onreadystatechange = function(env)
+	{
+		console.log("onreadystatechange");
+		if (request.readyState == 4 && request.status == 200)
+		{
+			//受信完了時の処理
+			var result = document.getElementById("result");
+//			var text = document.createTextNode(decodeURI(request.responseText));
+//			result.appendChild(text);
+		}
+	}
+
+	request.open('GET', 'http://api.lolesports.com/api/issueToken', true);
+	request.send("");
+	
+	request('http://api.lolesports.com/api/issueToken', { json: true }, (err, res, body) => {
+		if (err) log.error(err)
+
+		let ws = new WebSocket(`ws://livestats.proxy.lolesports.com/stats?jwt=${body.token}`)
+		// let ws = new WebSocket(`ws://localhost:8080`) // used for simulation of livestats server
+
+		ws.on('close', (code, message) => {
+				log.warn('websocket has closed. info:')
+				log.warn(`  code: ${code}`)
+				log.warn(`  message: ${message}`)
+				log.warn('reconnecting...')
+				connectToSocket()
+		})
+
+		ws.on('error', (err) => {
+			log.error('error reported:')
+			log.error(err)
+		})
+
+		ws.on('message', (msg) => {
+			let json = {}
+			try {
+				json = JSON.parse(msg)
+			} catch (e) {
+				log.warn('NON-JSON DATA')
+				log.warn(msg)
+				log.error(e)
+			}
+
+			Object.keys(json).forEach((key) => {
+				let game = json[key]
+				if (game === null) return
+
+				if (!games[key])
+				{
+					log.info(`adding game ${game.realm}-${key}`)
+					let filePath = `${process.cwd()}/games/${game.realm}-${key}.json`
+					let fileExisted = fileExists(filePath)
+					games[key] = {
+						stream: fs.createWriteStream(filePath, { flags: 'a' }),
+						obj: game,
+						id: `${game.realm}-${key}`,
+						written: fileExists(filePath + '.finished')
+					}
+
+					if (!fileExisted)
+					{
+						games[key].stream.write(`[\n`)
+					}
+				}
+
+				if (games[key].written)
+				{
+					log.info(`finished file already exists for ${games[key].id} -- won't process again`)
+					games[key].stream.destroy()
+					return
+				}
+
+				log.info(`event received for game ${games[key].id} at time ${formatTime(game.t)}`)
+
+				let isComplete = (game.gameComplete || false)
+				games[key].obj = _.merge(games[key].obj, game)
+				// special item logic -- the item array isn't a diff, it's the full items the player has
+				// lodash.merge tries to merge arrays though, when we just want to outright replace it
+				if (game.playerStats)
+				{
+					Object.keys(game.playerStats).forEach((id) => {
+						let player = game.playerStats[id]
+
+						if (player.items) {
+							games[key].obj.playerStats[id].items = player.items
+						}
+					})
+				}
+
+				// don't bother writing the data for the first frames where player pos are 0
+				if (games[key].obj.playerStats['1'].x !== 0)
+				{
+					games[key].stream.write(JSON.stringify(games[key].obj) + (isComplete ? '\n' : ',\n'))
+				}
+
+				if (isComplete)
+				{
+					log.info(`finished game ${games[key].id} at time ${formatTime(game.t)}! finishing up...`)
+
+					games[key].stream.end(']\n', () => {
+						games[key].stream.destroy()
+
+						let filePath = `${process.cwd()}/games/${games[key].id}.json`
+
+						fs.writeFile(filePath + '.finished', '', (err) => {
+							if (err) log.error(err)
+							games[key].written = true
+
+							log.info(`uploading file for ${games[key].id}...`)
+							matchesBucket.upload(filePath, {
+								destination: `matches/${games[key].id}.json`,
+								gzip: true,
+								public: true
+							}, (err) => {
+								if (err) log.error(err)
+								log.info(`uploaded file for ${games[key].id}!`)
+								})
+						})
+					})
+				}
+			})
+		})
+	})
+}
+
+function Test2()
+{
+	connectToSocket();
 }
