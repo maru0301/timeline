@@ -520,8 +520,18 @@ function formatTime (ms)
 	return min + ':' + (sec < 10 ? '0' : '') + sec
 }
 
+function fileExists(url) {
+    if(url){
+        var req = new XMLHttpRequest();
+        req.open('GET', url, false);
+        req.send();
+        return req.status==200;
+    } else {
+        return false;
+    }
+}
+
 //const log = bunyan.createLogger({ name: 'data-grabber' });
-let games = {}
 //let gcs = gcloud.storage();
 //let matchesBucket = gcs.bucket(process.env.LOL_TIMELINE_GCLOUD_BUCKET)
 
@@ -563,6 +573,8 @@ function connectToSocket ()
 					console.log(json);
 				}
 
+				let games = {};
+
 				Object.keys(json).forEach((key) => {
 					let game = json[key]
 					if (game === null) return
@@ -570,9 +582,30 @@ function connectToSocket ()
 					if (!games[key])
 					{
 						console.log(`adding game ${game.realm}-${key}`);
-						
+						var filePath = `./games/${game.realm}-${key}.json`;
+						let fileExisted = fileExists(filePath);
+						game[key] = {
+//							stream:
+							obj:game,
+							id: `${game.realm}-${key}`,
+							written: fileExists(filePath + '.finished')
+						}
+						/*
 						$.ajax(
 						{
+							url : filePath,
+							type: 'GET',
+							dataType: 'json',
+							
+							success: function (json)
+							{
+							},
+							error: function (XMLHttpRequest, textStatus, errorThrown)
+							{
+							}
+						});
+						*/
+							/*
 							var myObject = new FileReader();
 	//						myObject = WScript.CreateObject("Scripting.FileSystemObject");
 							
@@ -590,6 +623,7 @@ function connectToSocket ()
 								games[key].stream.write(`[\n`)
 							}
 						}
+							*/
 					}
 
 				});
@@ -735,4 +769,41 @@ function connectToSocket ()
 function Test2()
 {
 	connectToSocket();
+/*
+	$.ajax(
+	{
+		url: 'https://jp.api.pvp.net/api/lol/JP/v2.2/match/143774378?includeTimeline=false&api_key=561cb811-20fb-4e50-bc7f-3f3c8cd345e4',
+		type: 'GET',
+		dataType: 'json',
+		data: {},
+		
+		success: function (json)
+		{
+			console.log("no timeline opt");
+			console.log(json);
+		},
+		error: function (XMLHttpRequest, textStatus, errorThrown)
+		{
+			console.log(XMLHttpRequest);
+		}
+	});
+
+	$.ajax(
+	{
+		url: 'https://jp.api.pvp.net/api/lol/JP/v2.2/match/143774378?includeTimeline=true&api_key=561cb811-20fb-4e50-bc7f-3f3c8cd345e4',
+		type: 'GET',
+		dataType: 'json',
+		data: {},
+		
+		success: function (json)
+		{
+			console.log("timeline opt");
+			console.log(json);
+		},
+		error: function (XMLHttpRequest, textStatus, errorThrown)
+		{
+			console.log(XMLHttpRequest);
+		}
+	});
+*/
 }
